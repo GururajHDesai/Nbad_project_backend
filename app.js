@@ -26,14 +26,8 @@ app.use(bodyParser.json());
 app.use(compression());
 
 
-app.get('/api/data', (req, res) => {
-  connection.query('SELECT * FROM your_table', (error, results) => {
-    if (error) throw error;
-    res.json(results);
-  });
-});
 
-app.post('/signup', (req, res) => {
+app.post('/signingup', (req, res) => {
   const { username, email, password } = req.body;
   console.log('Inside server signup');
   
@@ -49,22 +43,19 @@ app.post('/signup', (req, res) => {
   });
 });
 
-app.post('/login', (req, res) => {
+app.post('/checkLogin', (req, res) => {
   const { username, password } = req.body;
-  console.log('Inside server login');
-
-  
   const sql = 'SELECT * FROM users WHERE username = ? AND password = ?';
   connection.query(sql, [username, password], (err, result) => {
     if (err) {
-      console.error('Error checking user credentials:', err);
-      res.status(500).send('Error checking user credentials');
+      console.error('Error', err);
+      res.status(500).send('Error');
       return;
     }
 
     if (result.length > 0) {
      
-      const token = jwt.sign({ username }, 'secret', { expiresIn: '1m' });
+      const token = jwt.sign({ username }, 'basic', { expiresIn: '1m' });
       
       res.status(200).json({ message: 'Login successful', token, user: result[0] });
     } else {
@@ -75,56 +66,33 @@ app.post('/login', (req, res) => {
   });
 });
 
-
-app.post('/refreshToken', (req, res) => {
-  const token = req.headers.authorization.split(' ')[1];
-
-  jwt.verify(token, 'secret', (err, decoded) => {
-    if (err) {
-      console.error('Token verification error:', err);
-      return res.status(401).json({ message: 'Token verification failed' });
-    }
-
-    const { username } = decoded;
-    const newToken = jwt.sign({ username }, 'secret', { expiresIn: '1m' });
-
-    res.status(200).json({ token: newToken });
-  });
-});
-
-
-app.post('/addBudget', (req, res) => {
+app.post('/addExpense', (req, res) => {
   const { username, month, item, budget } = req.body;
-
- 
   const selectQuery = 'SELECT * FROM budgets WHERE username = ? AND month = ? AND item = ?';
   connection.query(selectQuery, [username, month, item], (err, result) => {
     if (err) {
-      console.error('Error checking existing record:', err);
-      res.status(500).json({ error: 'Error checking existing record' });
+      console.error('Error ', err);
+      res.status(500).json({ error: 'Error' });
       return;
     }
-
     if (result.length > 0) {
-      
       const updatedBudget = parseFloat(result[0].budget) + parseFloat(budget);
       const updateQuery = 'UPDATE budgets SET budget = ? WHERE username = ? AND month = ? AND item = ?';
       connection.query(updateQuery, [updatedBudget, username, month, item], (updateErr) => {
         if (updateErr) {
-          console.error('Error updating existing record:', updateErr);
-          res.status(500).json({ error: 'Error updating existing record' });
+          console.error('Error updating:', updateErr);
+          res.status(500).json({ error: 'Error updating' });
           return;
         }
         console.log('Record updated successfully');
         res.status(200).json({ message: 'Record updated successfully' });
       });
     } else {
-      
       const insertQuery = 'INSERT INTO budgets (username, month, item, budget) VALUES (?, ?, ?, ?)';
       connection.query(insertQuery, [username, month, item, budget], (insertErr) => {
         if (insertErr) {
-          console.error('Error inserting new record:', insertErr);
-          res.status(500).json({ error: 'Error inserting new record' });
+          console.error('Error inserting:', insertErr);
+          res.status(500).json({ error: 'Error inserting' });
           return;
         }
         console.log('New record inserted successfully');
@@ -173,8 +141,8 @@ app.post('/addCapacity', (req, res) => {
 
       connection.query(insertQuery, [username, month, item, capacity], (insertErr, insertResults) => {
         if (insertErr) {
-          console.error('Error inserting new record:', insertErr);
-          return res.status(500).json({ message: 'Error creating new record' });
+          console.error('Error inserting:', insertErr);
+          return res.status(500).json({ message: 'Error creating' });
         }
         return res.json({ message: 'New record created with capacity' });
       });
@@ -182,10 +150,8 @@ app.post('/addCapacity', (req, res) => {
   });
 });
 
-app.get('/getBudgetsByMonth', (req, res) => {
+app.get('/getExpensesByMonth', (req, res) => {
   const { username, month } = req.query;
-
- 
   const query = `SELECT * FROM budgets WHERE username = ? AND month = ?`;
   connection.query(query, [username, month], (error, results) => {
     if (error) {
